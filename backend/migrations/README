@@ -1,0 +1,19 @@
+Generic single-database configuration with Alembic.
+
+This directory contains database migration scripts for the PovertyLine application.
+Each migration script represents a change to the database schema.
+
+To generate a new migration script:
+```
+flask db migrate -m "Description of the migration"
+```
+
+To apply migrations to the database:
+```
+flask db upgrade
+```
+
+To revert the most recent migration:
+```
+flask db downgrade
+```
