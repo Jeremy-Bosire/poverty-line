@@ -1,0 +1,72 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+new_venv/
+env/
+ENV/
+.env
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+povertyline_db.sqlite
+
+# Logs
+*.log
+logs/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Flask stuff
+instance/
+.webassets-cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Migrations
+migrations/versions/*
+!migrations/versions/.gitkeep
+
+# Uploads
+uploads/
+
+# Environment variables
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Alembic
+alembic.ini
+
+# Temporary files
+*.tmp
+*~

@@ -10,10 +10,14 @@ from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Set default environment variables if not already set
+if 'DATABASE_URL' not in os.environ:
+    os.environ['DATABASE_URL'] = 'sqlite:///povertyline_db.sqlite'
+if 'SECRET_KEY' not in os.environ:
+    os.environ['SECRET_KEY'] = 'dev-secret-key'
+if 'JWT_SECRET_KEY' not in os.environ:
+    os.environ['JWT_SECRET_KEY'] = 'jwt-secret-key'
 
 # Initialize extensions
 db = SQLAlchemy()
