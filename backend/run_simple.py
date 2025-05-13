@@ -16,5 +16,5 @@ app = create_app()
 
 if __name__ == '__main__':
     print("Starting PovertyLine backend server...")
-    print("The API will be available at http://localhost:5001")
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    print("The API will be available at http://localhost:5005")
+    app.run(debug=True, host='0.0.0.0', port=5005)

@@ -1,7 +1,8 @@
 /**
  * AdminPanel component for administrative functions
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { 
   Box, 
   Typography, 
@@ -27,83 +28,51 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel
+  InputLabel,
+  CircularProgress,
+  Alert,
+  Snackbar,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 
-// Mock data for users
-const mockUsers = [
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john@example.com',
-    role: 'user',
-    status: 'active',
-    created: '2023-01-15'
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    role: 'provider',
-    status: 'active',
-    created: '2023-02-20'
-  },
-  {
-    id: 3,
-    name: 'Bob Johnson',
-    email: 'bob@example.com',
-    role: 'user',
-    status: 'inactive',
-    created: '2023-03-10'
-  },
-  {
-    id: 4,
-    name: 'Alice Brown',
-    email: 'alice@example.com',
-    role: 'provider',
-    status: 'active',
-    created: '2023-04-05'
-  },
-  {
-    id: 5,
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    status: 'active',
-    created: '2023-01-01'
-  }
+// Import admin actions
+import { 
+  fetchAllUsers, 
+  updateUser, 
+  changeUserStatus, 
+  fetchAllResources, 
+  fetchPendingResources, 
+  approveRejectResource,
+  clearAdminMessages 
+} from '../../features/admin/adminSlice';
+
+// Resource category options for filtering
+const resourceCategories = [
+  { value: 'all', label: 'All Categories' },
+  { value: 'food', label: 'Food' },
+  { value: 'housing', label: 'Housing' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'education', label: 'Education' },
+  { value: 'employment', label: 'Employment' },
+  { value: 'legal', label: 'Legal' },
+  { value: 'financial', label: 'Financial' },
+  { value: 'transportation', label: 'Transportation' },
+  { value: 'other', label: 'Other' }
 ];
 
-// Mock data for resources
-const mockResources = [
-  {
-    id: 1,
-    name: 'Food Pantry',
-    type: 'food',
-    provider: 'Jane Smith',
-    status: 'active',
-    created: '2023-02-25'
-  },
-  {
-    id: 2,
-    name: 'Job Training Workshop',
-    type: 'education',
-    provider: 'Alice Brown',
-    status: 'active',
-    created: '2023-04-10'
-  },
-  {
-    id: 3,
-    name: 'Medical Clinic',
-    type: 'healthcare',
-    provider: 'Jane Smith',
-    status: 'pending',
-    created: '2023-05-01'
-  }
+// Resource status options for filtering
+const resourceStatuses = [
+  { value: 'all', label: 'All Statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' }
 ];
 
 /**
@@ -112,11 +81,27 @@ const mockResources = [
  * @returns {React.ReactElement} - Rendered component
  */
 const AdminPanel = () => {
+  const dispatch = useDispatch();
+  const { 
+    users, 
+    pendingResources, 
+    allResources, 
+    loading, 
+    error, 
+    success, 
+    message 
+  } = useSelector(state => state.admin);
+
+  // Local state
   const [tabValue, setTabValue] = useState(0);
-  const [users, setUsers] = useState(mockUsers);
-  const [resources, setResources] = useState(mockResources);
   const [openUserDialog, setOpenUserDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [openResourceDialog, setOpenResourceDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedResourceId, setSelectedResourceId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showSnackbar, setShowSnackbar] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -131,6 +116,31 @@ const AdminPanel = () => {
     setOpenUserDialog(false);
   };
 
+  // Load data when component mounts
+  useEffect(() => {
+    dispatch(fetchAllUsers());
+    dispatch(fetchAllResources());
+    dispatch(fetchPendingResources());
+    
+    // Clear any messages or errors when component unmounts
+    return () => {
+      dispatch(clearAdminMessages());
+    };
+  }, [dispatch]);
+  
+  // Handle snackbar close
+  const handleCloseSnackbar = () => {
+    setShowSnackbar(false);
+    dispatch(clearAdminMessages());
+  };
+  
+  // Show snackbar when success or error occurs
+  useEffect(() => {
+    if (success || error) {
+      setShowSnackbar(true);
+    }
+  }, [success, error]);
+
   const handleUserChange = (e) => {
     const { name, value } = e.target;
     setCurrentUser(prev => ({
@@ -140,38 +150,80 @@ const AdminPanel = () => {
   };
 
   const handleSaveUser = () => {
-    setUsers(prev => 
-      prev.map(user => user.id === currentUser.id ? currentUser : user)
-    );
+    dispatch(updateUser({ 
+      userId: currentUser.id, 
+      userData: currentUser 
+    }));
     setOpenUserDialog(false);
   };
 
   const handleToggleUserStatus = (userId) => {
-    setUsers(prev => 
-      prev.map(user => {
-        if (user.id === userId) {
-          return {
-            ...user,
-            status: user.status === 'active' ? 'inactive' : 'active'
-          };
-        }
-        return user;
-      })
-    );
+    const userToUpdate = users.find(user => user.id === userId);
+    if (userToUpdate) {
+      const newStatus = userToUpdate.status === 'active' ? 'inactive' : 'active';
+      dispatch(changeUserStatus({ userId, status: newStatus }));
+    }
+  };
+  
+  // Handle resource approval
+  const handleApproveResource = (resourceId) => {
+    dispatch(approveRejectResource({ 
+      resourceId, 
+      status: 'approved' 
+    }));
+  };
+  
+  // Open rejection dialog
+  const handleOpenRejectDialog = (resourceId) => {
+    setSelectedResourceId(resourceId);
+    setRejectionReason('');
+    setOpenResourceDialog(true);
+  };
+  
+  // Close rejection dialog
+  const handleCloseResourceDialog = () => {
+    setOpenResourceDialog(false);
+    setSelectedResourceId(null);
+    setRejectionReason('');
+  };
+  
+  // Submit resource rejection
+  const handleRejectResource = () => {
+    if (selectedResourceId) {
+      dispatch(approveRejectResource({ 
+        resourceId: selectedResourceId, 
+        status: 'rejected', 
+        rejectionReason 
+      }));
+      handleCloseResourceDialog();
+    }
+  };
+  
+  // Filter resources by status and category
+  const handleStatusFilterChange = (event) => {
+    setStatusFilter(event.target.value);
+    if (event.target.value !== 'all') {
+      dispatch(fetchAllResources({ status: event.target.value, category: categoryFilter !== 'all' ? categoryFilter : undefined }));
+    } else {
+      dispatch(fetchAllResources({ category: categoryFilter !== 'all' ? categoryFilter : undefined }));
+    }
+  };
+  
+  const handleCategoryFilterChange = (event) => {
+    setCategoryFilter(event.target.value);
+    if (event.target.value !== 'all') {
+      dispatch(fetchAllResources({ category: event.target.value, status: statusFilter !== 'all' ? statusFilter : undefined }));
+    } else {
+      dispatch(fetchAllResources({ status: statusFilter !== 'all' ? statusFilter : undefined }));
+    }
   };
 
-  const handleToggleResourceStatus = (resourceId) => {
-    setResources(prev => 
-      prev.map(resource => {
-        if (resource.id === resourceId) {
-          return {
-            ...resource,
-            status: resource.status === 'active' ? 'inactive' : 'active'
-          };
-        }
-        return resource;
-      })
-    );
+  // Filter resources based on status filter
+  const getFilteredResources = () => {
+    if (!allResources) return [];
+    
+    // Filtering is handled by the API, so we just return what we have
+    return allResources;
   };
 
   return (
@@ -179,6 +231,22 @@ const AdminPanel = () => {
       <Typography variant="h4" component="h1" gutterBottom>
         Admin Panel
       </Typography>
+      
+      {/* Success/Error Messages */}
+      <Snackbar 
+        open={showSnackbar} 
+        autoHideDuration={6000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={error ? "error" : "success"} 
+          sx={{ width: '100%' }}
+        >
+          {error || message}
+        </Alert>
+      </Snackbar>
       
       <Paper sx={{ p: 3, borderRadius: 2 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -195,68 +263,72 @@ const AdminPanel = () => {
             <Typography variant="h6" gutterBottom>
               User Management
             </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Role</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={user.role} 
-                          color={
-                            user.role === 'admin' 
-                              ? 'error' 
-                              : user.role === 'provider' 
-                                ? 'primary' 
-                                : 'default'
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={user.status} 
-                          color={user.status === 'active' ? 'success' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{user.created}</TableCell>
-                      <TableCell>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleEditUser(user)}
-                          title="Edit user"
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleToggleUserStatus(user.id)}
-                          color={user.status === 'active' ? 'default' : 'primary'}
-                          title={user.status === 'active' ? 'Deactivate user' : 'Activate user'}
-                        >
-                          {user.status === 'active' 
-                            ? <BlockIcon fontSize="small" /> 
-                            : <CheckCircleIcon fontSize="small" />}
-                        </IconButton>
-                      </TableCell>
+            
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : users && users.length > 0 ? (
+              <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <Table aria-label="users table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Role</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Created</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={user.role} 
+                            color={
+                              user.role === 'admin' ? 'error' : 
+                              user.role === 'provider' ? 'warning' : 'info'
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={user.status} 
+                            color={user.status === 'active' ? 'success' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{new Date(user.created_at || user.created).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <IconButton aria-label="edit" size="small" onClick={() => handleEditUser(user)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            aria-label="toggle status" 
+                            size="small"
+                            onClick={() => handleToggleUserStatus(user.id)}
+                            color={user.status === 'active' ? 'default' : 'success'}
+                          >
+                            {user.status === 'active' ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography variant="subtitle1" color="text.secondary">
+                  No users found
+                </Typography>
+              </Box>
+            )}
           </Box>
         )}
         
@@ -266,62 +338,186 @@ const AdminPanel = () => {
             <Typography variant="h6" gutterBottom>
               Resource Management
             </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Provider</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {resources.map((resource) => (
-                    <TableRow key={resource.id}>
-                      <TableCell>{resource.name}</TableCell>
-                      <TableCell>{resource.type}</TableCell>
-                      <TableCell>{resource.provider}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={resource.status} 
-                          color={
-                            resource.status === 'active' 
-                              ? 'success' 
-                              : resource.status === 'pending' 
-                                ? 'warning' 
-                                : 'default'
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{resource.created}</TableCell>
-                      <TableCell>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleToggleResourceStatus(resource.id)}
-                          color={resource.status === 'active' ? 'default' : 'primary'}
-                          title={resource.status === 'active' ? 'Deactivate resource' : 'Activate resource'}
-                        >
-                          {resource.status === 'active' 
-                            ? <BlockIcon fontSize="small" /> 
-                            : <CheckCircleIcon fontSize="small" />}
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          color="error"
-                          title="Delete resource"
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
+            
+            {/* Filter controls */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={6} md={4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={statusFilter}
+                    label="Status"
+                    onChange={handleStatusFilterChange}
+                  >
+                    {resourceStatuses.map(status => (
+                      <MenuItem key={status.value} value={status.value}>
+                        {status.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={categoryFilter}
+                    label="Category"
+                    onChange={handleCategoryFilterChange}
+                  >
+                    {resourceCategories.map(category => (
+                      <MenuItem key={category.value} value={category.value}>
+                        {category.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            
+            {/* Pending Resources */}
+            {pendingResources && pendingResources.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }} color="warning.main">
+                  Pending Approvals ({pendingResources.length})
+                </Typography>
+                <TableContainer component={Paper}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Title</TableCell>
+                        <TableCell>Category</TableCell>
+                        <TableCell>Provider</TableCell>
+                        <TableCell>Location</TableCell>
+                        <TableCell>Submitted On</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {pendingResources.map((resource) => (
+                        <TableRow key={resource.id}>
+                          <TableCell>{resource.title || resource.name}</TableCell>
+                          <TableCell>{resource.category || resource.type}</TableCell>
+                          <TableCell>{resource.provider_name || resource.provider}</TableCell>
+                          <TableCell>{resource.city || 'N/A'}</TableCell>
+                          <TableCell>{new Date(resource.created_at || resource.created).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <IconButton 
+                              size="small" 
+                              color="success"
+                              title="Approve resource"
+                              onClick={() => handleApproveResource(resource.id)}
+                            >
+                              <ThumbUpIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              title="Reject resource"
+                              onClick={() => handleOpenRejectDialog(resource.id)}
+                            >
+                              <ThumbDownIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+            
+            {/* All Resources */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : getFilteredResources().length > 0 ? (
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Title</TableCell>
+                      <TableCell>Category</TableCell>
+                      <TableCell>Provider</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Location</TableCell>
+                      <TableCell>Created</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {getFilteredResources().map((resource) => (
+                      <TableRow key={resource.id}>
+                        <TableCell>{resource.title || resource.name}</TableCell>
+                        <TableCell>{resource.category || resource.type}</TableCell>
+                        <TableCell>{resource.provider_name || resource.provider}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={resource.status} 
+                            color={
+                              resource.status === 'approved' || resource.status === 'active'
+                                ? 'success' 
+                                : resource.status === 'pending' 
+                                  ? 'warning' 
+                                  : 'error'
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{resource.city || 'N/A'}</TableCell>
+                        <TableCell>{new Date(resource.created_at || resource.created).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {resource.status === 'pending' ? (
+                            <>
+                              <IconButton 
+                                size="small" 
+                                color="success"
+                                title="Approve resource"
+                                onClick={() => handleApproveResource(resource.id)}
+                              >
+                                <ThumbUpIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton 
+                                size="small" 
+                                color="error"
+                                title="Reject resource"
+                                onClick={() => handleOpenRejectDialog(resource.id)}
+                              >
+                                <ThumbDownIcon fontSize="small" />
+                              </IconButton>
+                            </>
+                          ) : (
+                            <IconButton 
+                              size="small" 
+                              color={resource.status === 'approved' || resource.status === 'active' ? 'default' : 'success'}
+                              title={resource.status === 'approved' || resource.status === 'active' ? 'Deactivate resource' : 'Activate resource'}
+                              onClick={() => {
+                                if (resource.status === 'rejected') {
+                                  handleApproveResource(resource.id);
+                                } else {
+                                  handleOpenRejectDialog(resource.id);
+                                }
+                              }}
+                            >
+                              {resource.status === 'approved' || resource.status === 'active'
+                                ? <BlockIcon fontSize="small" /> 
+                                : <CheckCircleIcon fontSize="small" />}
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography variant="subtitle1" color="text.secondary">
+                  No resources found
+                </Typography>
+              </Box>
+            )}
           </Box>
         )}
         
@@ -437,6 +633,37 @@ const AdminPanel = () => {
           <Button onClick={handleCloseUserDialog}>Cancel</Button>
           <Button onClick={handleSaveUser} variant="contained">
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Resource Rejection Dialog */}
+      <Dialog open={openResourceDialog} onClose={handleCloseResourceDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Reject Resource</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
+            Please provide a reason for rejecting this resource. This information will be shared with the provider.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Rejection Reason"
+            multiline
+            rows={4}
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="E.g., Insufficient information provided, contact information missing, etc."
+            variant="outlined"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseResourceDialog}>Cancel</Button>
+          <Button 
+            onClick={handleRejectResource} 
+            variant="contained" 
+            color="error"
+            disabled={!rejectionReason.trim()}
+          >
+            Reject Resource
           </Button>
         </DialogActions>
       </Dialog>
