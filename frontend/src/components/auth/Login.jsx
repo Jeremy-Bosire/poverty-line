@@ -51,18 +51,27 @@ const Login = () => {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Paper 
-        elevation={3} 
-        sx={{ 
-          p: 4, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          borderRadius: 2,
-          mt: 4
-        }}
-      >
+    <Box 
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 'calc(100vh - 64px)', // Account for navbar height
+        py: 4
+      }}
+    >
+      <Container component="main" maxWidth="xs">
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 4, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            borderRadius: 2
+          }}
+        >
         <Typography component="h1" variant="h5" gutterBottom>
           Sign In
         </Typography>
@@ -155,8 +164,9 @@ const Login = () => {
             </Form>
           )}
         </Formik>
-      </Paper>
-    </Container>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 

@@ -7,6 +7,9 @@ import CssBaseline from '@mui/material/CssBaseline';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 
+// Layout Component
+import Layout from './components/layout/Layout';
+
 // Auth Components
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -14,6 +17,10 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Unauthorized from './components/auth/Unauthorized';
+
+// Public Pages
+import Home from './components/Home';
+import About from './components/About';
 
 // Lazy-loaded components
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
@@ -43,32 +50,43 @@ function App() {
       <Router>
         <Suspense fallback={<Loading />}>
           <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            {/* Auth Routes for password reset outside main layout */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
-
-            {/* Protected Routes - Any authenticated user */}
-            <Route element={<ProtectedRoute allowedRoles={[]} />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-            </Route>
-
-            {/* Provider Routes */}
-            <Route element={<ProtectedRoute allowedRoles={[ROLES.PROVIDER, ROLES.ADMIN]} />}>
+            
+            {/* Main Layout with Navbar */}
+            <Route element={<Layout />}>
+              {/* Auth Routes with navbar */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+            
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              
+              {/* Public Resources Route */}
               <Route path="/resources" element={<Resources />} />
-            </Route>
+              
+              {/* Protected Routes - Any authenticated user */}
+              <Route element={<ProtectedRoute allowedRoles={[]} />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+              </Route>
 
-            {/* Admin Routes */}
-            <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
-              <Route path="/admin" element={<AdminPanel />} />
-            </Route>
+              {/* Provider Routes */}
+              <Route element={<ProtectedRoute allowedRoles={[ROLES.PROVIDER, ROLES.ADMIN]} />}>
+                <Route path="/resources/manage" element={<Resources isManage={true} />} />
+              </Route>
 
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
+              {/* Admin Routes */}
+              <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+                <Route path="/admin" element={<AdminPanel />} />
+              </Route>
+              
+              {/* 404 Route */}
+              <Route path="*" element={<NotFound />} />
+            </Route>
           </Routes>
         </Suspense>
       </Router>
